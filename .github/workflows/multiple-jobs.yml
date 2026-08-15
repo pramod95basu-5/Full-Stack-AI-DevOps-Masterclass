@@ -44,16 +44,16 @@ jobs:
  
   docker-login:
     runs-on: ubuntu-latest
-    needs: build
+    needs: test
 
     steps:
       - name: Docker Login
         run: echo "Docker Login"
-        
-         
+
+
   build-image:
     runs-on: ubuntu-latest
-    needs: build
+    needs: docker-login
 
     steps:
       - name: Build Docker Image
