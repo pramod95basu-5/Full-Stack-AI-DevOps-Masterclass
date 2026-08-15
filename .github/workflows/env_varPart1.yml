@@ -1,0 +1,18 @@
+name: Env Var Part 1
+
+on:
+  workflow_dispatch
+
+job:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: one lne comment
+        run: echo "This is 1 line comment"
+
+      - name: In stall env var
+        env:
+          APP_ENV: dev
+        run: echo "Environment var is $APP_ENV"  
+        
