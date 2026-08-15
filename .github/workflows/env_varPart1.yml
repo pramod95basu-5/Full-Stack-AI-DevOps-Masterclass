@@ -3,7 +3,7 @@ name: Env Var Part 1
 on:
   workflow_dispatch
 
-job:
+jobs:
   build:
     runs-on: ubuntu-latest
 
@@ -15,4 +15,3 @@ job:
         env:
           APP_ENV: dev
         run: echo "Environment var is $APP_ENV"  
-        
