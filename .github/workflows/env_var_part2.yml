@@ -1,0 +1,17 @@
+name: Env var using secrets
+on:
+  workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    setps:
+      - name: checkout the code
+        uses: actions/checkout@v4
+
+      - name: Install
+        env:
+         APP_ENV: dev
+         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+         run: echo "Environment $APP_ENV using $DB_PASSWORD"  
