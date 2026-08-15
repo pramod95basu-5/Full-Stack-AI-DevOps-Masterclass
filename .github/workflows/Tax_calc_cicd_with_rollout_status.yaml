@@ -1,0 +1,122 @@
+name: Tax_calculator_ci_cd_eks
+
+on:
+#push
+  workflow_dispatch
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [service-a, service-b]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup JDk
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin' # See 'Supported distributions' for available options
+          java-version: '21'
+      - name: Build and test maven
+        working-directory: docker/app2-tax-calculator/spring/${{ matrix.service }}
+        run: mvn -B clean verify
+
+  docker-build-login:
+    runs-on: ubuntu-latest
+    needs: build-test
+    strategy:
+      matrix:
+        service:
+          - { name: "service-a", docker_name: "tax-service-a", path: "docker/app2-tax-calculator/spring/service-a" }
+          - { name: "service-b", docker_name: "tax-service-b", path: "docker/app2-tax-calculator/spring/service-b" }
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDk
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin' # See 'Supported distributions' for available options
+          java-version: '21'
+
+      - name: Build JAR for Docker
+        working-directory: ${{ matrix.service.path }}
+        run: mvn -B clean package -DskipTests
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.path }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service.docker_name }}:latest
+
+  running-service-on-eks:
+    runs-on: ubuntu-latest
+    needs: docker-build-login
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List checked out files and folders
+        run: |
+          echo "Files and folders checked out:"
+          ls -la
+          echo "Kubernetes manifests:"
+          ls -la docker/app2-tax-calculator/k8s
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Update kubeconfig for EKS cluster
+        run: |
+          aws eks update-kubeconfig --name tax-calculator-cluster --region us-east-1
+      - name: Deploy to EKS using kubectl
+        run: |
+          kubectl apply -f docker/app2-tax-calculator/k8s/deployment.yaml
+          kubectl apply -f docker/app2-tax-calculator/k8s/service.yaml
+      - name: Check rollout and probes for applied resources
+        run: |
+          echo "Re-applying manifests and capturing created/updated resources"
+          # apply manifests and output resources as kind/name
+          resources=$(kubectl apply -f docker/app2-tax-calculator/k8s -o name || true)
+          echo "Resources applied:\n$resources"
+
+          if [ -z "$resources" ]; then
+            echo "No resources were applied or directory not found."
+            exit 0
+          fi
+
+          # iterate each resource returned by kubectl apply
+          while read -r res; do
+            # skip empty lines
+            [ -z "$res" ] && continue
+            echo "----\nResource: $res"
+            kind=${res%%/*}        # e.g. deployment.apps, service
+            name=${res#*/}         # e.g. service-a
+
+            # For deployments, wait for rollout
+            if [ "$kind" = "deployment.apps" ]; then
+              echo "Waiting rollout for $res"
+              kubectl rollout status "$res" --timeout=120s || echo "Rollout did not complete within timeout for $res"
+            fi
+
+            # Print pods matching label `app=<name>` if present
+            echo "Pods for label app=$name:"
+            kubectl get pods -l app="$name" -o wide || true
+
+            # Describe the resource to show probes and recent events
+            echo "Describe $res (shows readiness/liveness probes and events):"
+            kubectl describe "$res" || true
+          done <<< "$resources"
