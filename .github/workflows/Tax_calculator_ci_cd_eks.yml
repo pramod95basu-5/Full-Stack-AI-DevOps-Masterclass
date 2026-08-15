@@ -21,11 +21,7 @@ jobs:
       - name: Build and test maven
         working-directory: docker/app2-tax-calculator/spring/${{ matrix.service }}  
         run: mvn -B clean verify
-      - name: upload Test reports
-        uses: actions/upload-artifacts@v4
-        with: 
-          name: test-reports-${{ matrix.service }}
-          path: docker/app2-tax-calculator/spring/${{ matrix.service }}/target/surefire-reports 
+      
 
   docker-build-login:
     runs-on: ubuntu-latest
