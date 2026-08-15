@@ -1,0 +1,33 @@
+name: Env Var Part 1
+
+on:
+  workflow_dispatch
+env:
+  GLOBAL_ENV: workflow-level-global-var
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      JOB_LEVEL_ENV: job-level-var
+
+    steps:
+      - name: one lne comment
+        run: echo "This is 1 line comment"
+
+      - name: In stall env var
+        env:
+          APP_ENV: dev
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: echo "Environment var is $APP_ENV ,secret is $DB_PASSWORD, Global var is $GLOBAL_ENV, Job level var is $JOB_LEVEL_ENV"  
+      
+      - name: Create a demo file
+        run: |
+          echo "Hello from CI pipeline" > demo.txt
+          echo "File create successfully"
+
+      - name: upload the artifacts
+        uses: actions/upload-artifacts@v4
+        with:
+          name: build-artifacts-demo
+          path: .
