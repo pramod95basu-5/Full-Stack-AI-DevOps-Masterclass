@@ -6,7 +6,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    setps:
+    steps:
       - name: checkout the code
         uses: actions/checkout@v4
 
@@ -14,4 +14,4 @@ jobs:
         env:
          APP_ENV: dev
          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-         run: echo "Environment $APP_ENV using $DB_PASSWORD"  
+        run: echo "Environment $APP_ENV using $DB_PASSWORD"  
