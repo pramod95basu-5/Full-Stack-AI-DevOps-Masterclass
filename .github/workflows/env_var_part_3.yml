@@ -18,4 +18,5 @@ jobs:
       - name: In stall env var
         env:
           APP_ENV: dev
-        run: echo "Environment var is $APP_ENV , Global var is $GLOBAL_ENV, Job level var is $JOB_LEVEL_ENV"  
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: echo "Environment var is $APP_ENV ,secret is $DB_PASSWORD, Global var is $GLOBAL_ENV, Job level var is $JOB_LEVEL_ENV"  
