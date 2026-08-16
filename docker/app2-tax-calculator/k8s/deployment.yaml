@@ -39,8 +39,8 @@ metadata:
 spec:
   selector:
     app: service-a
-  type: NodePort
+  type: LoadBalancer
   ports:
     - port: 3000
       targetPort: 3000  
-      nodePort: 32000
+      
